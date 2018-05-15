@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gomore.newretail.sys.dao.mapper.UserMapper">
+
+  <!-- 通用查询结果列 -->
+  <sql id="all_columns">
+    o.`id`,o.`create_time`,o.`creator_id`,o.`creator_name`,o.`update_time`,o.`updator_id`,o.`updator_name`,o.`org_id`,o.`username`,o.`password`,o.`salt`,o.`disabled`,o.`mobile`,o.`real_name`,o.`gender`,o.`birthday`,o.`id_no`,o.`email`,o.`avatar`,o.`work_number`
+  </sql>
+
+  <!-- 分页查询 -->
+  <select id="query" resultType="com.gomore.newretail.sys.bean.dto.user.UserDTO">
+    SELECT
+    <include refid="all_columns"></include>
+    ,a.name as org_name
+    from nr_sys_user o left join nr_sys_org a on o.org_id = a.id
+    WHERE 1=1
+    <if test="filter.idEquals == null">
+      <!-- ROOT用户不对外公布 -->
+      and o.id != 0
+    </if>
+    <if test="filter.idEquals != null">
+      and o.id = #{filter.idEquals}
+    </if>
+    <if test="filter.nameLike != null and filter.nameLike.trim() != ''">
+      and ((o.username like concat('%',#{filter.nameLike},'%')) or (o.real_name like concat('%',#{filter.nameLike},'%')))
+    </if>
+    <if test="filter.workNumberEquals != null and filter.workNumberEquals.trim() != ''">
+      and o.work_number = #{filter.workNumberEquals}
+    </if>
+    <if test="filter.genderEquals != null">
+      and o.gender = #{filter.genderEquals.name()}
+    </if>
+    <if test="filter.disabled != null">
+      and o.disabled = ${filter.disabled}
+    </if>
+    <if test="filter.upperOrgIdEqulas != null">
+      and o.org_id = #{filter.upperOrgIdEqulas}
+    </if>
+  </select>
+
+</mapper>

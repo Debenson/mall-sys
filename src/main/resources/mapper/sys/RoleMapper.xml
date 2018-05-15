@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gomore.newretail.sys.dao.mapper.RoleMapper">
+
+  <!-- 通用查询结果列 -->
+  <sql id="all_columns">
+    o.`id`,o.`create_time`,o.`creator_id`,o.`creator_name`,o.`update_time`,o.`updator_id`,o.`updator_name`,o.`org_id`,o.`name`,o.`remark`
+  </sql>
+
+  <!-- 取得用户拥有的角色 -->
+  <select id="getUserRoles" resultType="com.gomore.newretail.sys.bean.dto.role.RoleDTO">
+    select
+    <include refid="all_columns"></include>
+    from nr_sys_role o, nr_sys_user_role_rl a
+    where o.id = a.role_id and a.user_id = #{userId} and
+    a.working_org_id = #{workingOrgId}
+  </select>
+
+  <!-- 分页查询 -->
+  <select id="query" resultType="com.gomore.newretail.sys.bean.dto.role.RoleDTO">
+    SELECT
+    <include refid="all_columns"></include>, a.name as org_name
+    FROM nr_sys_role o left join nr_sys_org a on o.org_id = a.id
+    WHERE 1=1
+    <if test="filter.nameLike != null and filter.nameLike.trim() != ''">
+      and o.name like concat('%',#{filter.nameLike},'%')
+    </if>
+    <if test="filter.orgIdIn != null">
+      and o.org_id in 
+      <foreach collection="filter.orgIdIn" index="index" item="item" open="(" separator="," close=")">
+        #{item}
+      </foreach>
+    </if>
+    <if test="filter.upperOrgPathStartWith != null and filter.upperOrgPathStartWith.trim() != ''">
+      and a.path like concat(#{filter.upperOrgPathStartWith}, '%')
+    </if>
+  </select>
+
+</mapper>

@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gomore.newretail.sys.dao.mapper.OrganizationMapper">
+
+  <!-- 通用查询结果列 -->
+  <sql id="all_columns">
+    o.`id`,o.`create_time`,o.`creator_id`,o.`creator_name`,o.`update_time`,o.`updator_id`,o.`updator_name`,o.`org_id`,o.`code`,o.`name`,o.`type`,o.`disabled`,o.`path`,o.`tel`,o.`contact`,o.`address`,o.`longitude`,o.`latitude`,o.`remark`
+  </sql>
+
+  <!-- 取得组织角色列表 -->
+  <select id="getAllRoles" resultType="com.gomore.newretail.sys.bean.dto.role.RoleDTO">
+    select b.* from
+    nr_sys_org_role_rl a, nr_sys_role b
+    where a.org_id = #{orgId} and
+    a.role_id = b.id
+  </select>
+
+  <!-- 删除所有角色的指定权限列表 -->
+  <delete id="deleteRolePermissions">
+    delete from nr_sys_role_permission_rl where permission_id
+    <foreach collection="permissionIds" item="item" index="index" open="in(" separator=","
+      close=")">
+      #{item,jdbcType=VARCHAR}
+    </foreach>
+  </delete>
+
+  <!-- 取得用户的所有权限 -->
+  <select id="getUserPermissions" resultType="string">
+    select a.permissions
+    from nr_sys_menu o, nr_sys_user b,
+    nr_sys_user_role c,
+    nr_sys_role_permission_rl d
+    where b.id =
+    #{userId}
+    and b.id = c.user_id
+    <if test="workingOrgId != null">
+      and c.org_id = #{workingOrgId}
+    </if>
+    <!-- 如果工作组织为就关联用户的所属组织 -->
+    <if test="workingOrgId == null">
+      and c.org_id = b.org_id
+    </if>
+    and c.role_id = d.role_id
+    and d.permission_id = o.id
+  </select>
+
+  <!--取得指定的组织的所有权限 -->
+  <select id="getOrgMenus" resultType="com.gomore.newretail.sys.bean.dto.menu.MenuTreeDTO">
+    select
+    o.`id`,o.`create_time`,o.`creator_id`,o.`creator_name`,o.`update_time`,o.`updator_id`,o.`updator_name`,o.`org_id`,o.`parent_id`,o.`code`,o.`name`,o.`url`,o.`permissions`,o.`type`,o.`icon`,o.`order_num`
+    from nr_sys_menu o, nr_sys_org_role_rl a, nr_sys_role_permission_rl
+    b
+    where a.org_id =${orgId}
+    and
+    a.role_id = b.role_id
+    and
+    b.permission_id = o.id
+    <if test="userId != null">
+      and o.id not in (
+      select id from nr_sys_user c, nr_sys_user_role d,
+      nr_sys_role_permission_rl e
+      where c.id = ${userId} and c.id =
+      d.user_id and d.role_id = e.role_id
+      <if test="workingOrgId != null">
+        and d.org_id = #{workingOrgId}
+      </if>
+      <if test="workingOrgId == null">
+        and d.org_id = c.org_id
+      </if>
+      )
+    </if>
+    order by o.order_num
+  </select>
+
+  <!-- 取顶级组织(非ROOT) -->
+  <select id="getGroup" resultType="com.gomore.newretail.sys.dao.po.OrganizationPO">
+    SELECT
+    <include refid="all_columns"></include>
+    FROM
+    nr_sys_org o
+    WHERE
+    1 = 1
+    AND o.id != 0
+    AND o.type = 'GROUP'
+  </select>
+
+  <!-- 分页查询 -->
+  <select id="query" resultType="com.gomore.newretail.sys.dao.po.OrganizationPO">
+    SELECT
+    <include refid="all_columns"></include>
+    FROM nr_sys_org o
+    WHERE 1=1
+    <!-- ROOT组织不对外公布 -->
+    and o.id != 0
+    <if test="filter.idEquals != null">
+      and o.id = #{filter.idEquals}
+    </if>
+    <if test="filter.codeEquals != null and filter.codeEquals.trim() != ''">
+      and o.code = #{filter.codeEquals}
+    </if>
+    <if test="filter.nameLike != null and filter.nameLike.trim() != ''">
+      and o.name like concat('%',#{filter.nameLike},'%')
+    </if>
+    <if test="filter.orgTypesIn != null and filter.orgTypesIn.size() > 0">
+      and o.type in
+      <foreach collection="filter.orgTypesIn" index="index" item="item" open="(" separator="," close=")">
+        #{item}
+      </foreach>
+    </if>
+    <if test="filter.upperOrgIdEquals != null and filter.upperOrgIdEquals != 0">
+      <!-- 仅查指定组织直接下级组织 -->
+      <if test="filter.includeLowerOrg == null or !filter.includeLowerOrg">
+        and o.org_id = #{filter.upperOrgIdEquals}
+      </if>
+      <!-- 查所有下级组织 -->
+      <if test="filter.includeLowerOrg != null and filter.includeLowerOrg">
+        and exists (select 1 from nr_sys_org b where b.id =
+        #{filter.upperOrgIdEquals} and
+        o.path like concat(b.path,'%'))
+      </if>
+    </if>
+  </select>
+
+</mapper>

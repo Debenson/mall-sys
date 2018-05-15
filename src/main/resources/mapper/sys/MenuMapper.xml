@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.gomore.newretail.sys.dao.mapper.MenuMapper">
+
+  <!-- 通用查询结果列 -->
+  <sql id="all_columns">
+		o.`id`,o.`create_time`,o.`creator_id`,o.`creator_name`,o.`update_time`,o.`updator_id`,o.`updator_name`,o.`org_id`,o.`parent_id`,o.`name`,o.`url`,o.`permissions`,o.`type`,o.`icon`,o.`order_num`
+  </sql>
+
+  <!-- 删除所有角色的菜单列表 -->
+  <delete id="deleteRoleMenus">
+    delete from nr_sys_role_permission_rl where permission_id
+    <foreach collection="permissionIds" item="item" index="index" open="in(" separator="," close=")">
+      #{item,jdbcType=VARCHAR}
+    </foreach>
+  </delete>
+  
+  <!-- 取得角色拥有的菜单列表 -->
+  <select id="getRoleMenus" resultType="com.gomore.newretail.sys.bean.dto.menu.MenuDTO">
+    select distinct <include refid="all_columns"></include>
+    from nr_sys_menu o, nr_sys_role_permission_rl a
+    where o.id = a.permission_id and a.role_id = #{roleId}
+    order by o.parent_id, o.order_num  
+  </select>
+
+  <!-- 取得指定的用户的所有菜单 -->
+  <select id="getUserMenus" resultType="com.gomore.newretail.sys.bean.dto.menu.MenuDTO">
+    select distinct <include refid="all_columns"></include>  
+    from nr_sys_menu o
+    <if test="userId != 0">
+      ,nr_sys_user_role_rl a, nr_sys_role_permission_rl b
+    </if>
+    where 1=1
+    <if test="userId != 0">
+      and a.user_id = ${userId} 
+      and a.working_org_id = ${workingOrgId} 
+      and a.role_id = b.role_id 
+      and b.permission_id = o.id      
+    </if>      
+    order by o.parent_id, o.order_num 
+  </select>
+  
+  <!-- 取得指定的用户的所有权限 -->
+  <select id="getUserPermissions" resultType="string">
+    select o.permissions
+    from nr_sys_menu o
+    <if test="userId != 0">
+      ,nr_sys_user_role_rl a, nr_sys_role_permission_rl b
+    </if>
+    where 1=1 
+    <if test="userId != 0">
+      and a.user_id = ${userId} 
+      and a.working_org_id = ${workingOrgId} 
+      and a.role_id = b.role_id 
+      and b.permission_id = o.id
+    </if>  
+    order by o.parent_id, o.order_num 
+  </select>
+
+  <!--取得指定的组织的所有菜单 -->
+  <select id="getOrgMenus" resultType="com.gomore.newretail.sys.bean.dto.menu.MenuDTO">
+    select <include refid="all_columns"></include>   
+    from nr_sys_menu o
+    <!-- 0是超级组织  -->
+    <if test="orgId != 0">
+      ,nr_sys_org_role_rl a, nr_sys_role_permission_rl b      
+    </if>
+    where 1=1
+    <if test="orgId != 0">
+      and a.org_id =${orgId} and a.role_id = b.role_id and b.permission_id = o.id      
+    </if>    
+    order by o.order_num
+  </select>
+
+</mapper>
